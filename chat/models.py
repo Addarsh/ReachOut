@@ -42,8 +42,8 @@ class Message(models.Model):
     # Primary key uniquely identifying the Chat Message.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    # Chat Room Id the message is part of. 
-    chat_room_id = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
+    # Chat Room the message is part of. 
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
 
     # Timestamp when this Message was created.
     created_time = models.DateTimeField(auto_now_add=True)
@@ -61,8 +61,8 @@ class ChatRoomUser(models.Model):
     user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
 
-    # Chat Room Id the user is part of.
-    chat_room_id = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
+    # Chat Room the user is part of.
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
 
     # Timestamp when this user invited themself to the room.
     invited_time = models.DateTimeField(auto_now_add=True)
@@ -81,8 +81,8 @@ class Post(models.Model):
     # Primary key uniquely identifying the Post.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    # Creator User Id. 
-    creator_user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+    # Creator User. 
+    creator_user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     # Timestamp when this Message was created.
     created_time = models.DateTimeField(auto_now_add=True)

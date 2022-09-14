@@ -1,3 +1,4 @@
 .DS_Store
 chat/__pycache__/
 reachout/__pycache__/
+chat/migrations/__pycache__/
