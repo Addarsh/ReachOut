@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from chat.models import User, Post
+from chat.models import User, Post, ChatRoom
 
 """
 Validate that user fields in JSON request.
@@ -20,7 +20,7 @@ class UserSerializer(serializers.Serializer):
 
     def get_model(self):
         self.is_valid(raise_exception = True)
-        return User(email=self.get_email(), user_name=self.get_user_name())
+        return User(email=self.get_email(), username=self.get_user_name())
 
 """
 Validate and Serialize post made by user.
@@ -54,3 +54,28 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = ['id', 'creator_user', 'created_time', 'title', 'description']
+
+
+"""
+Validate and serialize ChatRoom
+"""
+
+class CreateChatRoomSerializer(serializers.Serializer):
+    creator_id = serializers.UUIDField()
+    invitee_id = serializers.UUIDField()
+    initial_message = serializers.CharField(allow_blank=False)
+
+    def get_creator_id(self):
+        return self.validated_data["creator_id"]
+
+    def get_invitee_id(self):
+        return self.validated_data["invitee_id"]
+
+    def get_initial_message(self):
+        return self.validated_data["initial_message"]
+
+
+class ChatRoomSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatRoom
+        fields = ['id']

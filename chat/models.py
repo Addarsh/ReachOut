@@ -13,9 +13,6 @@ class User(AbstractUser):
     # Email Address of the user.
     email = models.EmailField(unique=True)
 
-    # User name on the app.
-    user_name = models.CharField(max_length=200, blank=False)
-
     # Timestamp when this user row was last updated.
     last_updated_time = models.DateTimeField(auto_now=True)
 
@@ -27,6 +24,9 @@ Represents a Chat Room.
 class ChatRoom(models.Model):
     # Primary key uniquely identifying the Chat Room.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # User who creates the chat.
+    creator_user_id = models.UUIDField(default=uuid.uuid4, editable=False)
 
     # Timestamp when this Chat Room was created.
     created = models.DateTimeField(auto_now_add=True)
@@ -41,6 +41,9 @@ Represents a Chat Message.
 class Message(models.Model):
     # Primary key uniquely identifying the Chat Message.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # User who sent the chat message.
+    sender_id = models.UUIDField(default=uuid.uuid4, editable=False)
 
     # Chat Room the message is part of. 
     chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
@@ -60,15 +63,14 @@ class ChatRoomUser(models.Model):
     # Same as primary key in User table.
     user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-
     # Chat Room the user is part of.
     chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
 
     # Timestamp when this user invited themself to the room.
-    invited_time = models.DateTimeField(auto_now_add=True)
+    invited_time = models.DateTimeField(null=True)
 
     # Timestamp when the user was accepted to join the room.
-    joined_time = models.DateTimeField()
+    joined_time = models.DateTimeField(null=True)
 
      # Timestamp when this row was last updated.
     last_updated_time = models.DateTimeField(auto_now=True)

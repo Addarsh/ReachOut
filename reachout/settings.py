@@ -77,6 +77,7 @@ WSGI_APPLICATION = 'reachout.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
+# Link to manage migration cleanup: https://simpleisbetterthancomplex.com/tutorial/2016/07/26/how-to-reset-migrations.html
 
 DATABASES = {
     'default': {
