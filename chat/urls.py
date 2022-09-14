@@ -3,5 +3,6 @@ from django.urls import path
 from . import service
 
 urlpatterns = [
-    path('', service.ChatList.as_view()),
+    path('user/create/', service.CreateUser.as_view()),
+    path('test/', service.TestAPI.as_view()),
 ]
