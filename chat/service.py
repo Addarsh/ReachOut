@@ -91,7 +91,7 @@ class ChatRoomManager(APIView):
                 room_invitee_user.save()
 
                 # Create message.
-                initial_message = Message(chat_room=chat_room, text=initial_message)
+                initial_message = Message(chat_room=chat_room, text=initial_message, sender_id=creator_id)
                 initial_message.save()
 
         except User.DoesNotExist:

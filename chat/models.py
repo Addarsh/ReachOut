@@ -60,8 +60,10 @@ Represents a Chat Room User.
 """
 
 class ChatRoomUser(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
     # Same as primary key in User table.
-    user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_id = models.UUIDField(default=uuid.uuid4, editable=False)
 
     # Chat Room the user is part of.
     chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
