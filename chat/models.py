@@ -57,6 +57,22 @@ class Message(models.Model):
     # Message Text.
     text = models.TextField()    
 
+"""
+Represents User level metadata associated with given message.
+"""
+
+class UserMessageMetadata(models.Model):
+    # Primary key uniquely identifying the User Message.
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # User Id (from User table). 
+    user_id = models.UUIDField(default=uuid.uuid4, editable=False)
+
+    # Chat Message associated with given User message. 
+    message = models.ForeignKey(Message, on_delete=models.CASCADE)
+
+    # Timestamp when message was read.
+    read_time = models.DateTimeField(auto_now_add=True)
 
 """
 Represents a Chat Room User.
