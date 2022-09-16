@@ -4,10 +4,9 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.db import transaction, IntegrityError
 from django.db.models.functions import Now
-from chat.serializers import UserSerializer, CreatePostSerializer, PostSerializer, CreateChatRoomSerializer
+from chat.serializers import UserSerializer, CreatePostSerializer, PostSerializer, CreateChatRoomSerializer, MessageSerializer, ChatAcceptOrRejectSerializer
 from chat.models import ChatRoomUser, Post, ChatRoom, User, Message
-from chat.common import ChatRoomUserState, json_serial
-import json
+from chat.common import ChatRoomUserState
 
 """
 API to just test server is working.
@@ -119,12 +118,12 @@ class ChatRoomManager(APIView):
             with transaction.atomic():
                 User.objects.get(pk=user_id)
 
-                # Fetch all chat rooms that the user is part of.
-                all_chat_rooms = ChatRoom.objects.filter(chatroomuser__user_id__exact=user_id)
+                # Fetch all chat rooms that the user is part of and has not rejected.
+                all_chat_rooms = ChatRoom.objects.filter(chatroomuser__user_id__exact=user_id).exclude(chatroomuser__state__exact=ChatRoomUserState.REJECTED.name)
                 room_ids = [r.id for r in all_chat_rooms]
                 
-                # Exclude rooms where the other user is in invited state. We don't want to show these in the UI.
-                chat_room_users = ChatRoomUser.objects.filter(chat_room__id__in=room_ids).exclude(user_id__exact=user_id).exclude(state__exact=ChatRoomUserState.INVITED.name)
+                # Exclude rooms where the other user is in invited/rejected state. We don't want to show these in the UI.
+                chat_room_users = ChatRoomUser.objects.filter(chat_room__id__in=room_ids).exclude(user_id__exact=user_id).exclude(state__in=[ChatRoomUserState.INVITED.name, ChatRoomUserState.REJECTED.name])
                 final_room_ids = [r.chat_room.id for r in chat_room_users]
                 final_room_ids_set = set(final_room_ids)
 
@@ -144,10 +143,73 @@ class ChatRoomManager(APIView):
 
                     results.append(result_room)
 
-                json_result = json.dumps(results, default=json_serial)
-
         except User.DoesNotExist:
             return Response(data="User not found", status=status.HTTP_400_BAD_REQUEST)
 
+        return Response(data=results, status=status.HTTP_200_OK)
 
-        return Response(data=json_result, status=status.HTTP_200_OK)
+"""
+Manage chat messages.
+"""
+
+class MessagesManager(APIView):
+
+    """
+    List Messages in Chat. Should be paginated but for now, return all messages in a chat.
+    """
+
+    def get(self, request):
+        room_id = request.query_params.get('room_id')
+        if room_id is None:
+            return Response("Missing Chat Room Id in request", status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            with transaction.atomic():
+                ChatRoom.objects.get(pk=room_id)
+                messages = Message.objects.filter(chat_room__id__exact=room_id)
+                message_serializer = MessageSerializer(messages, many=True)
+        except ChatRoom.DoesNotExist:
+            return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data=message_serializer.data, status=status.HTTP_200_OK)
+
+"""
+Manage Chat Request Invite.
+"""
+
+class ManageChatInviteRequest(APIView):
+
+    """
+    Accept or reject given chat request invite.
+    """
+
+    def post(self, request):
+        serializer = ChatAcceptOrRejectSerializer(data=request.data)
+        serializer.is_valid(raise_exception = True)
+
+        user_id = serializer.get_user_id()
+        room_id = serializer.get_room_id()
+        accepted = serializer.is_accepted()
+
+        try:
+            with transaction.atomic():
+                User.objects.get(pk=user_id)
+                ChatRoom.objects.get(pk=room_id)
+                result_state = ChatRoomUserState.JOINED if accepted else ChatRoomUserState.REJECTED
+
+                chat_room_user  = ChatRoomUser.objects.filter(chat_room__id__exact=room_id).get(user_id__exact=user_id)
+                if chat_room_user.state != ChatRoomUserState.INVITED.name:
+                    return Response(data="User is not currently invited to the room", status=status.HTTP_400_BAD_REQUEST)
+
+                chat_room_user.state = result_state.name
+                if result_state == ChatRoomUserState.JOINED:
+                    chat_room_user.joined_time = Now()
+                
+                chat_room_user.save()
+
+        except User.DoesNotExist:
+            return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
+        except ChatRoom.DoesNotExist:
+            return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data="success", status=status.HTTP_200_OK)
