@@ -31,6 +31,9 @@ class ChatRoom(models.Model):
     # Timestamp when this Chat Room was created.
     created = models.DateTimeField(auto_now_add=True)
 
+    # Name of the chat room. Can be edited by users.
+    name = models.TextField()
+
     # Timestamp when this Chat was last updated.
     last_updated_time = models.DateTimeField(auto_now=True)
 
@@ -73,6 +76,9 @@ class ChatRoomUser(models.Model):
 
     # Timestamp when the user was accepted to join the room.
     joined_time = models.DateTimeField(null=True)
+
+    # State of the user's membership. Can be INVITED or JOINED.
+    state = models.CharField(max_length=200)
 
      # Timestamp when this row was last updated.
     last_updated_time = models.DateTimeField(auto_now=True)
