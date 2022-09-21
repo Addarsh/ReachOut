@@ -9,5 +9,6 @@ urlpatterns = [
     path('room/', service.MessagesManager.as_view()),
     path('accept/', service.ManageChatInviteRequest.as_view()),
     path('read/', service.MarkChatAsRead.as_view()),
+    path('unread/', service.AnyUnreadMessagesForUser.as_view()),
     path('test/', service.TestAPI.as_view()),
 ]

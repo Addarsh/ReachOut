@@ -269,3 +269,44 @@ class MarkChatAsRead(APIView):
 
 
         return Response(data=serializer.data, status=status.HTTP_200_OK)
+
+"""
+Check if there are any unread messgaes for given user.
+"""
+
+class AnyUnreadMessagesForUser(APIView):
+
+    """
+    Returns a list of unread messages for a user across all chat rooms.
+    """
+
+    def get(self, request):
+        user_id = request.query_params.get('user_id')
+        if user_id is None:
+            return Response("Missing User Id in request", status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                User.objects.get(pk=user_id)
+
+                # Find list of all chat rooms where user is joined.
+                chat_room_users = ChatRoomUser.objects.filter(user_id__exact=user_id).filter(state__exact=ChatRoomUserState.JOINED.name)
+                room_ids = [r.chat_room.id for r in chat_room_users]
+
+                # In each chat room, find if the latest message is unread by the user or not.
+                num_unread_messages = 0
+                for id in room_ids:
+                    message = Message.objects.filter(chat_room__id__exact=id).order_by('-created_time')[0]
+
+                    # If no results are returned, then the message is unread.
+                    user_message_metadata = UserMessageMetadata.objects.filter(message__id__exact=message.id).filter(user_id__exact=user_id)
+                    if len(user_message_metadata) == 0:
+                        num_unread_messages += 1
+                
+            
+            resp = {'num_unread_messsages': num_unread_messages}
+            return Response(data=resp, status=status.HTTP_200_OK)
+                    
+        except User.DoesNotExist:
+            return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
+
