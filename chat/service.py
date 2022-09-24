@@ -57,7 +57,7 @@ class PostManager(APIView):
     """
 
     def get(self, request):
-        posts = Post.objects.all()
+        posts = Post.objects.all().order_by('-created_time')
         serializer = PostSerializer(posts, many=True)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 
