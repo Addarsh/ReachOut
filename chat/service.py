@@ -57,9 +57,23 @@ class PostManager(APIView):
     """
 
     def get(self, request):
-        posts = Post.objects.all().order_by('-created_time')
-        serializer = PostSerializer(posts, many=True)
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
+
+        final_posts = []
+        try:
+            with transaction.atomic():
+                posts = Post.objects.all().order_by('-created_time')
+
+                # Fetch usernames of each person who created a post.
+                usernames = [post.creator_user.username for post in posts]
+                serializer = PostSerializer(posts, many=True)
+                for i, py_post in enumerate(serializer.data):
+                    py_post_copy = py_post.copy()
+                    py_post_copy['username'] = usernames[i]
+                    final_posts.append(py_post_copy)
+
+        except User.DoesNotExist:
+            return Response(data="User not found", status=status.HTTP_400_BAD_REQUEST)
+        return Response(data=final_posts, status=status.HTTP_200_OK)
 
 """
 Manage chat room creation.
