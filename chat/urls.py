@@ -11,4 +11,7 @@ urlpatterns = [
     path('read/', service.MarkChatAsRead.as_view()),
     path('unread/', service.AnyUnreadMessagesForUser.as_view()),
     path('test/', service.TestAPI.as_view()),
+    # Fetch token for given user credentials.
+    path('login/', service.Login.as_view()),
+    path('signup/', service.SignUp.as_view())
 ]

@@ -1,5 +1,58 @@
 from rest_framework import serializers
 from chat.models import User, Post, Message
+from django.contrib.auth import authenticate
+from django.core.exceptions import ValidationError
+
+"""
+Serialize user information provided during sign up (register). What is key is that password
+is encrypted before writing the User object to ensure that future authentication works as expected.
+This is because set_password method encrypts the plain text password before saving and the authenticate method (possibly)
+in the authentication flow will also encrypt the plain text password. To ensure authentication, we need to do this.
+A token is created once the user is saved.
+Reference: https://stackoverflow.com/questions/40076254/drf-auth-token-non-field-errors-unable-to-log-in-with-provided-credential
+"""
+
+class UserSignUpSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+    class Meta:
+        model = User
+        fields = ['email', 'password']
+        extra_kwargs = {'password': {'write_only': True}}
+    
+    def create(self, validated_data):
+        user = User(email=validated_data['email'])
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
+
+
+"""
+Login serializer that validates user credentials and authenticates the user.
+"""
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        if email and password:
+
+            user = authenticate(username=email, password=password)
+
+            if user:
+                if not user.is_active:
+                    raise ValidationError('User account is disabled.')
+            else:
+                raise ValidationError('Unable to log in with provided credentials.')
+        else:
+            raise ValidationError('Must include "email" and "password"')
+
+        attrs['user'] = user
+        return attrs
 
 """
 Validate that user fields in JSON request.

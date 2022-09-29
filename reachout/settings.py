@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_extensions',
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -56,6 +57,14 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'reachout.urls'
 
 AUTH_USER_MODEL = 'chat.User'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ]
+}
+
+AUTHENTICATION_BACKENDS = ['chat.email_auth_backend.EmailBackend']
 
 TEMPLATES = [
     {

@@ -1,16 +1,62 @@
 from dataclasses import dataclass
 from email import message
 from http import server
+from chat import serializers
 from chat.serializers import PostSerializer, UserSerializer
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django.db import transaction, IntegrityError
 from django.db.models.functions import Now
-from chat.serializers import UserSerializer, CreatePostSerializer, PostSerializer, CreateChatRoomSerializer, MessageSerializer, ChatAcceptOrRejectSerializer, ChatReadSerializer
+from chat.serializers import UserSerializer, CreatePostSerializer, PostSerializer, CreateChatRoomSerializer, MessageSerializer, ChatAcceptOrRejectSerializer, ChatReadSerializer, LoginSerializer, UserSignUpSerializer
 from chat.models import ChatRoomUser, Post, ChatRoom, User, Message, UserMessageMetadata
 from chat.common import ChatRoomUserState
 from datetime import datetime
+
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
+
+"""
+API to sign up user for the first time.
+A token is returned as a result.
+"""
+
+class SignUp(APIView):
+
+    def post(self, request):
+        serializer = UserSignUpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            user = serializer.save()
+            token, created = Token.objects.get_or_create(user=user)
+        except Exception as e:
+            print(e)
+            return Response(data=e.args, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'token': token.key, 'user_id': user.pk, 'email': user.email}, status=status.HTTP_201_CREATED)
+
+
+"""
+Custom authentication class for User object. We use this to primarily ensure that
+user email and password are used for authentication (Instead of username which is the default).
+Once authenticated, we turn the token associated with the user in the response.
+"""
+
+class Login(ObtainAuthToken):
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token = Token.objects.get(user=user)
+        return Response({
+            'token': token.key,
+            'user_id': user.pk,
+            'email': user.email
+        })
+
 
 """
 API to just test server is working.
@@ -41,6 +87,8 @@ Manage posts on the page.
 """
 
 class PostManager(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     """
     Create a post.
