@@ -96,7 +96,7 @@ class PostManager(APIView):
 
     def post(self, request):
         created_post_serializer = CreatePostSerializer(data=request.data)
-        created_post_serializer.get_model().save()
+        created_post_serializer.get_model(request.user).save()
         return Response(data=created_post_serializer.data, status=status.HTTP_201_CREATED)
 
     """

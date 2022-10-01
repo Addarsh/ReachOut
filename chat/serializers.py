@@ -80,12 +80,8 @@ Validate and Serialize post made by user.
 """
 
 class CreatePostSerializer(serializers.Serializer):
-    user_id = serializers.UUIDField()
     title = serializers.CharField()
     description = serializers.CharField()
-
-    def get_user_id(self):
-        return self.validated_data["user_id"]
 
     def get_title(self):
         return self.validated_data["title"]
@@ -93,10 +89,9 @@ class CreatePostSerializer(serializers.Serializer):
     def get_description(self):
         return self.validated_data["description"]
 
-    def get_model(self):
+    def get_model(self, user):
         self.is_valid(raise_exception=True)
 
-        user = User.objects.get(pk=self.get_user_id())
         return Post(creator_user=user, title=self.get_title(), description=self.get_description())
 
 """
