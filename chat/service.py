@@ -9,7 +9,18 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction, IntegrityError
 from django.db.models.functions import Now
-from chat.serializers import UserSerializer, CreatePostSerializer, PostSerializer, CreateChatRoomSerializer, MessageSerializer, ChatAcceptOrRejectSerializer, ChatReadSerializer, LoginSerializer, UserSignUpSerializer
+from chat.serializers import (
+    UserSerializer, 
+    CreatePostSerializer, 
+    PostSerializer, 
+    CreateChatRoomSerializer, 
+    MessageSerializer, 
+    ChatAcceptOrRejectSerializer, 
+    ChatReadSerializer, 
+    LoginSerializer, 
+    UserSignUpSerializer, 
+    PostIdSerializer
+)
 from chat.models import ChatRoomUser, Post, ChatRoom, User, Message, UserMessageMetadata
 from chat.common import ChatRoomUserState
 from datetime import datetime
@@ -122,6 +133,25 @@ class PostManager(APIView):
         except User.DoesNotExist:
             return Response(data="User not found", status=status.HTTP_400_BAD_REQUEST)
         return Response(data=final_posts, status=status.HTTP_200_OK)
+
+    """
+    Delete a post previosuly created by the user.
+    """
+
+    def delete(self, request):
+        serializer = PostIdSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        post_id = serializer.get_post_id()
+        try:
+            with transaction.atomic():
+                post = Post.objects.get(pk=post_id)
+                if post.creator_user.id != request.user.id:
+                    return Response(data="User not authorized to delete post", status=status.HTTP_401_UNAUTHORIZED)
+                post.delete()
+        except Post.DoesNotExist:
+            return Response(data="Post does not exist", status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 """
 Manage chat room creation.

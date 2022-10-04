@@ -155,3 +155,10 @@ class ChatReadSerializer(serializers.Serializer):
 
     def get_room_id(self):
         return self.validated_data["room_id"]
+
+
+class PostIdSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+
+    def get_post_id(self):
+        return self.validated_data["id"]
