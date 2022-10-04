@@ -13,5 +13,6 @@ urlpatterns = [
     path('test/', service.TestAPI.as_view()),
     # Fetch token for given user credentials.
     path('login/', service.Login.as_view()),
-    path('signup/', service.SignUp.as_view())
+    path('signup/', service.SignUp.as_view()),
+    path('username/', service.UserNameManager.as_view())
 ]

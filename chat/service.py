@@ -65,8 +65,32 @@ class Login(ObtainAuthToken):
         return Response({
             'token': token.key,
             'user_id': user.pk,
-            'email': user.email
+            'email': user.email,
         })
+
+"""
+Set username of given user. If username already set, return an error.
+"""
+
+class UserNameManager(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if 'username' not in request.data:
+            return Response(data="Username not found in request", status=status.HTTP_400_BAD_REQUEST)
+        
+        username = request.data['username']
+        if username == "":
+            return Response(data="Username cannot be blank", status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        
+        if user.username != "":
+            return Response(data="Username already set", status=status.HTTP_400_BAD_REQUEST)
+    
+        user.username = username
+        user.save()
+        return Response(data=username, status=status.HTTP_201_CREATED)
 
 
 """
