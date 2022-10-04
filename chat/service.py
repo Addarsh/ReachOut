@@ -19,7 +19,8 @@ from chat.serializers import (
     ChatReadSerializer, 
     LoginSerializer, 
     UserSignUpSerializer, 
-    PostIdSerializer
+    PostIdSerializer,
+    UsernameSerializer
 )
 from chat.models import ChatRoomUser, Post, ChatRoom, User, Message, UserMessageMetadata
 from chat.common import ChatRoomUserState
@@ -76,18 +77,14 @@ class UserNameManager(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if 'username' not in request.data:
-            return Response(data="Username not found in request", status=status.HTTP_400_BAD_REQUEST)
-        
-        username = request.data['username']
-        if username == "":
-            return Response(data="Username cannot be blank", status=status.HTTP_400_BAD_REQUEST)
+        serializer = UsernameSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         user = request.user
-        
         if user.username != "":
             return Response(data="Username already set", status=status.HTTP_400_BAD_REQUEST)
     
+        username = serializer.get_user_name()
         user.username = username
         user.save()
         return Response(data=username, status=status.HTTP_201_CREATED)
