@@ -180,6 +180,8 @@ Manage chat room creation.
 
 class ChatRoomManager(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     """
     Create a chat room and invite user with initial message.
     """
@@ -187,10 +189,10 @@ class ChatRoomManager(APIView):
     def post(self, request):
         chat_room_serializer = CreateChatRoomSerializer(data=request.data)
         chat_room_serializer.is_valid(raise_exception = True)
+        creator_id = request.user.id
 
         try:
             with transaction.atomic():
-                creator_id = chat_room_serializer.get_creator_id()
                 invitee_id = chat_room_serializer.get_invitee_id()
                 initial_message = chat_room_serializer.get_initial_message()
 
@@ -218,6 +220,7 @@ class ChatRoomManager(APIView):
                 user_message_metadata.save()
 
         except User.DoesNotExist:
+            print("which user")
             return Response(data="User not found", status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError as e:
             print(e)
@@ -231,9 +234,7 @@ class ChatRoomManager(APIView):
     """
     
     def get(self, request):
-        user_id = request.query_params.get('user_id')
-        if user_id is None:
-            return Response("Missing User in request", status=status.HTTP_400_BAD_REQUEST)
+        user_id = request.user.id
 
         try:
             with transaction.atomic():
@@ -255,7 +256,7 @@ class ChatRoomManager(APIView):
                 results = []
                 for chat_room in final_chat_rooms:
                     last_message = Message.objects.order_by('-created_time')[0]
-                    last_message_dict = {"sender_id": str(last_message.sender_id), "text": last_message.text, "created_time": last_message.created_time}
+                    last_message_dict = {"sender_id": last_message.sender_id, "text": last_message.text, "created_time": last_message.created_time}
                     result_room = {"room_id": str(chat_room.id), "name": chat_room.name, "last_message":  last_message_dict,"users": []}
 
                     for chat_user in final_chat_room_users:

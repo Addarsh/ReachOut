@@ -109,12 +109,8 @@ Validate and serialize ChatRoom.
 """
 
 class CreateChatRoomSerializer(serializers.Serializer):
-    creator_id = serializers.UUIDField()
     invitee_id = serializers.UUIDField()
     initial_message = serializers.CharField(allow_blank=False)
-
-    def get_creator_id(self):
-        return self.validated_data["creator_id"]
 
     def get_invitee_id(self):
         return self.validated_data["invitee_id"]
