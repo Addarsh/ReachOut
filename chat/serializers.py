@@ -128,12 +128,8 @@ Manage Chat Accept or Reject.
 """
 
 class ChatAcceptOrRejectSerializer(serializers.Serializer):
-    user_id = serializers.UUIDField()
     room_id = serializers.UUIDField()
     accepted = serializers.BooleanField()
-
-    def get_user_id(self):
-        return self.validated_data["user_id"]
 
     def get_room_id(self):
         return self.validated_data["room_id"]

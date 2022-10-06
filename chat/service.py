@@ -261,7 +261,9 @@ class ChatRoomManager(APIView):
 
                     for chat_user in final_chat_room_users:
                         if chat_user.chat_room.id == chat_room.id:
-                            result_room["users"].append({"user_id": str(chat_user.user_id), "state": chat_user.state})
+                            # Fetch username.
+                            username = User.objects.get(pk=chat_user.user_id).username
+                            result_room["users"].append({"user_id": str(chat_user.user_id), "state": chat_user.state, 'username': username})
 
                     results.append(result_room)
 
@@ -276,6 +278,8 @@ Manage chat messages.
 
 class MessagesManager(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     """
     List Messages in Chat. Should be paginated but for now, return all messages in a chat.
     """
@@ -284,14 +288,18 @@ class MessagesManager(APIView):
         room_id = request.query_params.get('room_id')
         if room_id is None:
             return Response("Missing Chat Room Id in request", status=status.HTTP_400_BAD_REQUEST)
+        user_id = request.user.id
         
         try:
             with transaction.atomic():
                 ChatRoom.objects.get(pk=room_id)
+                ChatRoomUser.objects.filter(user_id__exact=user_id).get(chat_room__id__exact=room_id)
                 messages = Message.objects.filter(chat_room__id__exact=room_id)
                 message_serializer = MessageSerializer(messages, many=True)
         except ChatRoom.DoesNotExist:
             return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
+        except ChatRoomUser.DoesNotExist:
+            return Response(data="User does not belong to given chat room", status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data=message_serializer.data, status=status.HTTP_200_OK)
 
@@ -301,6 +309,8 @@ Manage Chat Request Invite.
 
 class ManageChatInviteRequest(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     """
     Accept or reject given chat request invite.
     """
@@ -309,7 +319,7 @@ class ManageChatInviteRequest(APIView):
         serializer = ChatAcceptOrRejectSerializer(data=request.data)
         serializer.is_valid(raise_exception = True)
 
-        user_id = serializer.get_user_id()
+        user_id = request.user.id
         room_id = serializer.get_room_id()
         accepted = serializer.is_accepted()
 
