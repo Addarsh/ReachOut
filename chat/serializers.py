@@ -137,6 +137,20 @@ class ChatAcceptOrRejectSerializer(serializers.Serializer):
     def is_accepted(self):
         return self.validated_data["accepted"]
 
+"""
+Manage chat room message post serializer.
+"""
+
+class ChatRoomMessagePostSerializer(serializers.Serializer):
+    room_id = serializers.UUIDField()
+    message = serializers.CharField(max_length=200, allow_blank=False)
+
+    def get_room_id(self):
+        return self.validated_data["room_id"]
+
+    def get_message(self):
+        return self.validated_data["message"]
+
 
 class ChatReadSerializer(serializers.Serializer):
     user_id = serializers.UUIDField()

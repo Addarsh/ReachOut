@@ -20,7 +20,8 @@ from chat.serializers import (
     LoginSerializer, 
     UserSignUpSerializer, 
     PostIdSerializer,
-    UsernameSerializer
+    UsernameSerializer,
+    ChatRoomMessagePostSerializer
 )
 from chat.models import ChatRoomUser, Post, ChatRoom, User, Message, UserMessageMetadata
 from chat.common import ChatRoomUserState
@@ -302,6 +303,34 @@ class MessagesManager(APIView):
             return Response(data="User does not belong to given chat room", status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data=message_serializer.data, status=status.HTTP_200_OK)
+
+    """
+    Post chat message to given chat room.
+    """
+
+    def post(self, request):
+        serializer = ChatRoomMessagePostSerializer(data=request.data)
+        serializer.is_valid(raise_exception = True)
+        user_id = request.user.id
+        try:
+            with transaction.atomic():
+                room_id = serializer.get_room_id()
+                message = serializer.get_message()
+                chat_room = ChatRoom.objects.get(pk=room_id)
+                ChatRoomUser.objects.filter(user_id__exact=user_id).get(chat_room__id__exact=room_id)
+
+                # Create message.
+                message = Message(chat_room=chat_room, text=message, sender_id=user_id)
+                message.save()
+                message_serializer = MessageSerializer(message)
+
+        except ChatRoom.DoesNotExist:
+            return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
+        except ChatRoomUser.DoesNotExist:
+            return Response(data="User does not belong to given chat room", status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data=message_serializer.data, status=status.HTTP_200_OK)
+        
 
 """
 Manage Chat Request Invite.
