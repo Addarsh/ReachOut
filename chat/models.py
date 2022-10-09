@@ -120,6 +120,9 @@ class ChatRoomUser(models.Model):
      # Timestamp when this row was last updated.
     last_updated_time = models.DateTimeField(auto_now=True)
 
+    # Last time when the chat room was read by the user.
+    last_read_time = models.DateTimeField(null=True)
+
 """
 Represents a Post made by a User.
 """

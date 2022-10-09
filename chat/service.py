@@ -368,10 +368,12 @@ class ManageChatInviteRequest(APIView):
                 
                 chat_room_user.save()
 
-                # Mark initial message as read.
+                # Mark group as read.
+                """
                 initial_message = Message.objects.get(chat_room__exact=room_id)
                 user_message_metadata = UserMessageMetadata(user_id=user_id, message=initial_message)
                 user_message_metadata.save()
+                """
 
         except User.DoesNotExist:
             return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
@@ -381,16 +383,18 @@ class ManageChatInviteRequest(APIView):
         return Response(data="success", status=status.HTTP_200_OK)
 
 """
-Mark Messages that were unread for user as read in given chat room.
+Mark Chat Room as read for given user.
 """
 
 class MarkChatAsRead(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         serializer = ChatReadSerializer(data=request.data)
         serializer.is_valid(raise_exception = True)
-
-        user_id = serializer.get_user_id()
+        
+        user_id = request.user.id
         room_id = serializer.get_room_id()
 
         try:
@@ -398,20 +402,10 @@ class MarkChatAsRead(APIView):
                 User.objects.get(pk=user_id)
                 ChatRoom.objects.get(pk=room_id)
 
-                # Check that user is in joined state.
-                ChatRoomUser.objects.filter(user_id__exact=user_id).filter(chat_room__id__exact=room_id).get(state__exact=ChatRoomUserState.JOINED.name)
-
-                # Get Last read message for given user in given chat room. Exclude rooms where user is not joined.
-                read_messages = UserMessageMetadata.objects.filter(message__chat_room__id__exact=room_id).filter(user_id__exact=user_id).order_by('-read_time')
-                
-                latest_read_time = datetime.min if len(read_messages) == 0 else read_messages[0].read_time
-                
-                # Mark all messages created after latest read time as read.
-                unread_messages = Message.objects.filter(chat_room__id__exact=room_id).filter(created_time__gte=latest_read_time)
-                for unread_msg in unread_messages:
-                    msg_metadata = UserMessageMetadata(user_id=user_id, message=unread_msg)
-                    msg_metadata.save()
-                
+                # Check that user is in joined state and save last read time as now if so.
+                chatroom_user = ChatRoomUser.objects.filter(user_id__exact=user_id).filter(chat_room__id__exact=room_id).get(state__exact=ChatRoomUserState.JOINED.name)
+                chatroom_user.last_read_time = Now()
+                chatroom_user.save()
 
         except User.DoesNotExist:
             return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
@@ -420,8 +414,7 @@ class MarkChatAsRead(APIView):
         except ChatRoomUser.DoesNotExist:
             return Response(data="User is not a member of the room", status=status.HTTP_400_BAD_REQUEST)
 
-
-        return Response(data=serializer.data, status=status.HTTP_200_OK)
+        return Response(data="success", status=status.HTTP_200_OK)
 
 """
 Check if there are any unread messgaes for given user.
