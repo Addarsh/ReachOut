@@ -258,7 +258,13 @@ class ChatRoomManager(APIView):
                 for chat_room in final_chat_rooms:
                     last_message = Message.objects.order_by('-created_time')[0]
                     last_message_dict = {"sender_id": last_message.sender_id, "text": last_message.text, "created_time": last_message.created_time}
-                    result_room = {"room_id": str(chat_room.id), "name": chat_room.name, "last_message":  last_message_dict,"users": []}
+
+                    # Query unread messages in room for given user.
+                    last_read_time = ChatRoomUser.objects.filter(user_id__exact=user_id).get(chat_room__id__exact=chat_room.id).last_read_time
+                    num_unread_messages = len(Message.objects.filter(chat_room__id__exact=chat_room.id).filter(created_time__gt=last_read_time))
+
+
+                    result_room = {"room_id": str(chat_room.id), "name": chat_room.name, "last_message":  last_message_dict, "users": [], "num_unread_messages": num_unread_messages}
 
                     for chat_user in final_chat_room_users:
                         if chat_user.chat_room.id == chat_room.id:
@@ -422,14 +428,14 @@ Check if there are any unread messgaes for given user.
 
 class AnyUnreadMessagesForUser(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     """
     Returns a list of unread messages for a user across all chat rooms.
     """
 
     def get(self, request):
-        user_id = request.query_params.get('user_id')
-        if user_id is None:
-            return Response("Missing User Id in request", status=status.HTTP_400_BAD_REQUEST)
+        user_id = request.user.id
 
         try:
             with transaction.atomic():
