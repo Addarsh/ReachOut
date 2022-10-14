@@ -133,16 +133,23 @@ class PostManager(APIView):
         return Response(data=created_post_serializer.data, status=status.HTTP_201_CREATED)
 
     """
-    Returns a list of Posts. Ideally we want this to be a paginated list but for now, we will
-    just return all the posts available in the database in decreasing order of creation time.
+    Returns a list of Posts paginated by created_time.
     """
 
     def get(self, request):
+        # We will return 50 posts at a time.
+        limit = 50
+        created_time = request.query_params.get('created_time')
 
         final_posts = []
         try:
             with transaction.atomic():
-                posts = Post.objects.all().order_by('-created_time')
+                posts = []
+                if created_time is None:
+                    # Return most recent results.
+                    posts = Post.objects.order_by('-created_time')[:limit]
+                else:
+                    posts = Post.objects.filter(created_time__lt=created_time).order_by('-created_time')[:limit]
 
                 # Fetch usernames of each person who created a post.
                 usernames = [post.creator_user.username for post in posts]
