@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from email import message
 from http import server
+from venv import create
 from chat import serializers
 from chat.serializers import PostSerializer, UserSerializer
 from rest_framework.views import APIView
@@ -24,7 +25,7 @@ from chat.serializers import (
     ChatRoomMessagePostSerializer
 )
 from chat.models import ChatRoomUser, Post, ChatRoom, User, Message, UserMessageMetadata
-from chat.common import ChatRoomUserState
+from chat.common import ChatRoomUserState, create_chat_room_reponse
 from datetime import datetime
 
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -183,10 +184,10 @@ class PostManager(APIView):
 
 
 """
-Manage chat room creation.
+Manage chat rooms per user.
 """
 
-class ChatRoomManager(APIView):
+class ChatRoomsPerUserManager(APIView):
 
     permission_classes = [IsAuthenticated]
 
@@ -266,36 +267,46 @@ class ChatRoomManager(APIView):
                 final_room_ids_set = set(final_room_ids)
 
                 # Query the chat room users.
-                final_chat_room_users = ChatRoomUser.objects.filter(chat_room__id__in=final_room_ids)
                 final_chat_rooms = list(filter(lambda x: x.id in final_room_ids_set, all_chat_rooms))
                 
                 results = []
                 for chat_room in final_chat_rooms:
-                    last_message = Message.objects.order_by('-created_time')[0]
-                    last_message_dict = {"sender_id": last_message.sender_id, "text": last_message.text, "created_time": last_message.created_time}
-
-                    # Query unread messages in room for given user.
-                    last_read_time = ChatRoomUser.objects.filter(user_id__exact=user_id).get(chat_room__id__exact=chat_room.id).last_read_time
-                    num_unread_messages = 0
-                    if last_read_time is None:
-                        num_unread_messages = len(Message.objects.filter(chat_room__id__exact=chat_room.id))
-                    else:
-                        num_unread_messages = len(Message.objects.filter(chat_room__id__exact=chat_room.id).filter(created_time__gt=last_read_time))
-
-                    result_room = {"room_id": str(chat_room.id), "name": chat_room.name, "last_updated_time": chat_room.last_updated_time, "last_message":  last_message_dict, "users": [], "num_unread_messages": num_unread_messages}
-
-                    for chat_user in final_chat_room_users:
-                        if chat_user.chat_room.id == chat_room.id:
-                            # Fetch username.
-                            username = User.objects.get(pk=chat_user.user_id).username
-                            result_room["users"].append({"user_id": str(chat_user.user_id), "state": chat_user.state, 'username': username})
-
+                    result_room = create_chat_room_reponse(user_id, chat_room)
                     results.append(result_room)
 
         except User.DoesNotExist:
             return Response(data="User not found", status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data=results, status=status.HTTP_200_OK)
+
+"""
+Single chat room manager.
+"""
+
+class ChatRoomManager(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    """
+    Fetch chat room with given id.
+    """
+
+    def get(self, request):
+        room_id = request.query_params.get('room_id')
+        if room_id is None:
+            return Response("Missing Chat Room Id in request", status=status.HTTP_400_BAD_REQUEST)
+
+        user_id = request.user.id
+
+        try:
+            with transaction.atomic():
+                User.objects.get(pk=user_id)
+                chat_room = ChatRoom.objects.get(pk=room_id)
+                resp = create_chat_room_reponse(user_id, chat_room)
+        except ChatRoom.DoesNotExist:
+            return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data=resp, status=status.HTTP_200_OK)
 
 """
 Manage chat messages.

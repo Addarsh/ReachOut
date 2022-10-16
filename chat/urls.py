@@ -5,8 +5,9 @@ from . import service
 urlpatterns = [
     path('user/create/', service.CreateUser.as_view()),
     path('post/', service.PostManager.as_view()),
-    path('chat/', service.ChatRoomManager.as_view()),
-    path('room/', service.MessagesManager.as_view()),
+    path('chats/', service.ChatRoomsPerUserManager.as_view()),
+    path('message/', service.MessagesManager.as_view()),
+    path('chat-room/', service.ChatRoomManager.as_view()),
     path('chat-invite/', service.ManageChatInviteRequest.as_view()),
     path('read/', service.MarkChatAsRead.as_view()),
     path('unread/', service.AnyUnreadMessagesForUser.as_view()),
