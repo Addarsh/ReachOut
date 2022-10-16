@@ -56,7 +56,7 @@ class ChatRoom(models.Model):
     name = models.TextField()
 
     # Timestamp when this Chat was last updated.
-    last_updated_time = models.DateTimeField(auto_now=True)
+    last_updated_time = models.DateTimeField(null=True)
 
 """
 Represents a Chat Message.

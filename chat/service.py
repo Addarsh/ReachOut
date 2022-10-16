@@ -210,7 +210,7 @@ class ChatRoomManager(APIView):
 
                 # Create ChatRoom
                 chat_room_name = ",".join([u1.username, u2.username])
-                chat_room  = ChatRoom(creator_user_id=creator_id, name=chat_room_name)
+                chat_room  = ChatRoom(creator_user_id=creator_id, name=chat_room_name, last_updated_time=Now())
                 chat_room.save()
 
                 # Create chat room users.
@@ -237,11 +237,13 @@ class ChatRoomManager(APIView):
         return Response(status=status.HTTP_201_CREATED)
 
     """
-    List Chats for given user. Should return top 10-20 chats but for now
-    returns all.
+    List Chats for given user. Only chat rooms where they are invited/joined and other user is not is returned.
+    Results are paginated by most recent rooms and sorted by most recently updated room.
     """
     
     def get(self, request):
+        limit = 50
+        last_updated_time = request.query_params.get('last_updated_time')
         user_id = request.user.id
 
         try:
@@ -249,7 +251,13 @@ class ChatRoomManager(APIView):
                 User.objects.get(pk=user_id)
 
                 # Fetch all chat rooms that the user is part of and has not rejected.
-                all_chat_rooms = ChatRoom.objects.filter(chatroomuser__user_id__exact=user_id).exclude(chatroomuser__state__exact=ChatRoomUserState.REJECTED.name)
+                all_chat_rooms = []
+                if last_updated_time is None:
+                    # Fetch most recent rooms.
+                    all_chat_rooms = ChatRoom.objects.filter(chatroomuser__user_id__exact=user_id).exclude(chatroomuser__state__exact=ChatRoomUserState.REJECTED.name).order_by('-last_updated_time')[:limit]
+                else:
+                    all_chat_rooms = ChatRoom.objects.filter(chatroomuser__user_id__exact=user_id).exclude(chatroomuser__state__exact=ChatRoomUserState.REJECTED.name).filter(last_updated_time__lt=last_updated_time).order_by('-last_updated_time')[:limit]
+                
                 room_ids = [r.id for r in all_chat_rooms]
                 
                 # Exclude rooms where the other user is in invited/rejected state. We don't want to show these in the UI.
@@ -268,10 +276,13 @@ class ChatRoomManager(APIView):
 
                     # Query unread messages in room for given user.
                     last_read_time = ChatRoomUser.objects.filter(user_id__exact=user_id).get(chat_room__id__exact=chat_room.id).last_read_time
-                    num_unread_messages = len(Message.objects.filter(chat_room__id__exact=chat_room.id).filter(created_time__gt=last_read_time))
+                    num_unread_messages = 0
+                    if last_read_time is None:
+                        num_unread_messages = len(Message.objects.filter(chat_room__id__exact=chat_room.id))
+                    else:
+                        num_unread_messages = len(Message.objects.filter(chat_room__id__exact=chat_room.id).filter(created_time__gt=last_read_time))
 
-
-                    result_room = {"room_id": str(chat_room.id), "name": chat_room.name, "last_message":  last_message_dict, "users": [], "num_unread_messages": num_unread_messages}
+                    result_room = {"room_id": str(chat_room.id), "name": chat_room.name, "last_updated_time": chat_room.last_updated_time, "last_message":  last_message_dict, "users": [], "num_unread_messages": num_unread_messages}
 
                     for chat_user in final_chat_room_users:
                         if chat_user.chat_room.id == chat_room.id:
@@ -335,6 +346,11 @@ class MessagesManager(APIView):
                 # Create message.
                 message = Message(chat_room=chat_room, text=message, sender_id=user_id)
                 message.save()
+
+                # Update chat room.
+                chat_room.last_updated_time = Now()
+                chat_room.save()
+
                 message_serializer = MessageSerializer(message)
 
         except ChatRoom.DoesNotExist:
@@ -380,13 +396,6 @@ class ManageChatInviteRequest(APIView):
                     chat_room_user.joined_time = Now()
                 
                 chat_room_user.save()
-
-                # Mark group as read.
-                """
-                initial_message = Message.objects.get(chat_room__exact=room_id)
-                user_message_metadata = UserMessageMetadata(user_id=user_id, message=initial_message)
-                user_message_metadata.save()
-                """
 
         except User.DoesNotExist:
             return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
