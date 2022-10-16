@@ -10,7 +10,7 @@ urlpatterns = [
     path('chat-room/', service.ChatRoomManager.as_view()),
     path('chat-invite/', service.ManageChatInviteRequest.as_view()),
     path('read/', service.MarkChatAsRead.as_view()),
-    path('unread/', service.AnyUnreadMessagesForUser.as_view()),
+    path('unread-message/', service.UnreadMessagesManager.as_view()),
     path('test/', service.TestAPI.as_view()),
     # Fetch token for given user credentials.
     path('login/', service.Login.as_view()),
