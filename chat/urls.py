@@ -8,6 +8,7 @@ urlpatterns = [
     path('chats/', service.ChatRoomsPerUserManager.as_view()),
     path('message/', service.MessagesManager.as_view()),
     path('chat-room/', service.ChatRoomManager.as_view()),
+    path('chat-room-exists/', service.AlreadyExistingChatRoom.as_view()),
     path('chat-invite/', service.ManageChatInviteRequest.as_view()),
     path('read/', service.MarkChatAsRead.as_view()),
     path('unread-message/', service.UnreadMessagesManager.as_view()),

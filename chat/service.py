@@ -309,6 +309,51 @@ class ChatRoomManager(APIView):
         return Response(data=resp, status=status.HTTP_200_OK)
 
 """
+Checks if chat room already exists between given users.
+"""
+
+class AlreadyExistingChatRoom(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    """
+    Check if chat room exists with given users.
+    """
+
+    def get(self, request):        
+        other_id = request.query_params.get('other_id')
+        if other_id is None:
+            return Response("Missing Other User Id in request", status=status.HTTP_400_BAD_REQUEST)
+
+        user_id = request.user.id
+
+        chat_room_exists_result = {"exists": False}
+        
+        try:
+            with transaction.atomic():
+                User.objects.get(pk=user_id)
+                User.objects.get(pk=other_id)
+
+                # Ensure both users are joined members of the room.
+                user_room_id_list = [cru.chat_room.id for cru in ChatRoomUser.objects.filter(user_id__exact=user_id).filter(state__exact=ChatRoomUserState.JOINED.name)]
+                other_room_id_list = [cru.chat_room.id for cru in ChatRoomUser.objects.filter(user_id__exact=other_id).filter(state__exact=ChatRoomUserState.JOINED.name)]
+
+                # Check if Chat room exists.
+                int_set = set(user_room_id_list) & set(other_room_id_list)
+                chat_room_exists_result["exists"] = len(int_set) > 0
+                chat_room_exists_result["room_id"] = list(int_set)[0] if len(int_set) > 0 else ""
+
+        except ChatRoom.DoesNotExist:
+            return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
+        except ChatRoomUser.DoesNotExist:
+            return Response(data="Chat Room User does not exist", status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data=chat_room_exists_result, status=status.HTTP_200_OK)
+
+
+"""
 Manage chat messages.
 """
 
