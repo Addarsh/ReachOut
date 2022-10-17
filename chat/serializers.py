@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from chat.models import User, Post, Message
+from chat.models import User, Post, Message, Feedback
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 
@@ -171,3 +171,13 @@ class UsernameSerializer(serializers.Serializer):
 
     def get_user_name(self):
         return self.validated_data["username"]
+
+"""
+Validate and Serialize Feedback.
+"""
+
+class FeedbackSerializer(serializers.Serializer):
+    description = serializers.CharField(max_length=200, allow_blank=False)
+
+    def get_description(self):
+        return self.validated_data["description"]

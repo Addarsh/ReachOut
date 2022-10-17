@@ -145,3 +145,20 @@ class Post(models.Model):
 
     # Timestamp when this row was last updated.
     last_updated_time = models.DateTimeField(auto_now=True)
+
+"""
+Represents feedback provided by a given user about app.
+"""
+
+class Feedback(models.Model):
+    # Primary key uniquely identifying the Feedback.
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Description of feedback.
+    description = models.TextField()
+
+    # User who created the feedback. Has a parent relationsip with feedback. 
+    creator_user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    # Timestamp when this feedback was created.
+    created_time = models.DateTimeField(auto_now_add=True)

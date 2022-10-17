@@ -3,7 +3,7 @@ from email import message
 from http import server
 from venv import create
 from chat import serializers
-from chat.serializers import PostSerializer, UserSerializer
+from chat.serializers import FeedbackSerializer, PostSerializer, UserSerializer
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
@@ -24,7 +24,7 @@ from chat.serializers import (
     UsernameSerializer,
     ChatRoomMessagePostSerializer
 )
-from chat.models import ChatRoomUser, Post, ChatRoom, User, Message, UserMessageMetadata
+from chat.models import ChatRoomUser, Post, ChatRoom, User, Message, UserMessageMetadata, Feedback
 from chat.common import ChatRoomUserState, create_chat_room_reponse
 from datetime import datetime
 
@@ -532,5 +532,28 @@ class MarkChatAsRead(APIView):
             return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
         except ChatRoomUser.DoesNotExist:
             return Response(data="User is not a member of the room", status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data="success", status=status.HTTP_200_OK)
+
+"""
+Handle feedback provided by user.
+"""
+
+class FeedbackManager(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user_id = request.user.id
+        serializer = FeedbackSerializer(data=request.data)
+        serializer.is_valid(raise_exception = True)
+
+        try:
+            with transaction.atomic():
+                user = User.objects.get(pk=user_id)
+                feedback = Feedback(creator_user=user, description=serializer.get_description())
+                feedback.save()
+        except User.DoesNotExist:
+            return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data="success", status=status.HTTP_200_OK)
