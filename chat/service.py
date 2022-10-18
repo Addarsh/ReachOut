@@ -190,15 +190,19 @@ class PostManager(APIView):
         serializer = PostIdSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         post_id = serializer.get_post_id()
+        resp = {"error_message": ""}
         try:
             with transaction.atomic():
                 post = Post.objects.get(pk=post_id)
                 if post.creator_user.id != request.user.id:
-                    return Response(data="User not authorized to delete post", status=status.HTTP_401_UNAUTHORIZED)
+                    resp["error_message"] = "User not authorized to delete post"
+                    return Response(data=resp, status=status.HTTP_401_UNAUTHORIZED)
                 post.delete()
         except Post.DoesNotExist:
-            return Response(data="Post does not exist", status=status.HTTP_400_BAD_REQUEST)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+            resp["error_message"] = "Post does not exist"
+            return Response(data=resp, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data=resp, status=status.HTTP_200_OK)
 
 
 """
@@ -247,7 +251,6 @@ class ChatRoomsPerUserManager(APIView):
                 user_message_metadata.save()
 
         except User.DoesNotExist:
-            print("which user")
             return Response(data="User not found", status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError as e:
             print(e)
