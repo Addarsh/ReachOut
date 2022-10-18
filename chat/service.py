@@ -49,7 +49,12 @@ class SignUp(APIView):
             print(e)
             return Response(data=e.args, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({'token': token.key, 'user_id': user.pk, 'email': user.email}, status=status.HTTP_201_CREATED)
+        return Response({
+            'token': token.key,
+            'user_id': user.pk,
+            'email': user.email,
+            'username': user.username,
+            }, status=status.HTTP_201_CREATED)
 
 
 """
@@ -69,6 +74,7 @@ class Login(ObtainAuthToken):
             'token': token.key,
             'user_id': user.pk,
             'email': user.email,
+            'username': user.username,
         })
 
 """
@@ -76,30 +82,42 @@ Set username of given user. If username already set, return an error.
 """
 
 class UserNameManager(APIView):
+    
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         serializer = UsernameSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        user_id = request.user.id
 
-        user = request.user
-        if user.username != "":
-            return Response(data="Username already set", status=status.HTTP_400_BAD_REQUEST)
-    
-        username = serializer.get_user_name()
-        user.username = username
-        user.save()
-        return Response(data=username, status=status.HTTP_201_CREATED)
+        resp = {"error_message": ""}
+        try:
+            with transaction.atomic():
+                user = User.objects.get(pk=user_id)
+                if user.username != "":
+                    resp["error_message"] = "Username already set for user!"
+                    return Response(data=resp, status=status.HTTP_400_BAD_REQUEST)
 
+                username = serializer.get_user_name()
+                if len(User.objects.filter(username__exact=username)) > 0:
+                    resp["error_message"] = "Username already taken"
+                    return Response(data=resp, status=status.HTTP_400_BAD_REQUEST)
 
-"""
-API to just test server is working.
-"""
+                user.username = username
+                user.save()          
+        except User.DoesNotExist:
+            return Response(data="Post does not exist", status=status.HTTP_400_BAD_REQUEST)
 
-class TestAPI(APIView):
+        return Response(data=resp, status=status.HTTP_201_CREATED)
+
+    """
+    Get username of given user.
+    """
 
     def get(self, request):
-        return Response("Hello! Your first response!")
+        user = request.user
+        resp = {"username": user.username}
+        return Response(data=resp, status=status.HTTP_200_OK)
 
 """
 Create a user.

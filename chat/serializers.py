@@ -167,7 +167,7 @@ class PostIdSerializer(serializers.Serializer):
 
 
 class UsernameSerializer(serializers.Serializer):
-    username = serializers.CharField(allow_blank=False)
+    username = serializers.CharField(max_length=200, allow_blank=False)
 
     def get_user_name(self):
         return self.validated_data["username"]
