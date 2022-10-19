@@ -40,3 +40,9 @@ def create_chat_room_reponse(user_id, chat_room):
         result_room["users"].append({"user_id": str(chatUser.id), "state": chatRoomUser.state, 'username': chatUser.username})
 
     return result_room
+
+def create_success_resp():
+    return create_error_message_resp()
+
+def create_error_message_resp(message=""):
+    return {"error_message": message}

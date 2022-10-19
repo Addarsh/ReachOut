@@ -25,7 +25,7 @@ from chat.serializers import (
     ChatRoomMessagePostSerializer
 )
 from chat.models import ChatRoomUser, Post, ChatRoom, User, Message, UserMessageMetadata, Feedback
-from chat.common import ChatRoomUserState, create_chat_room_reponse
+from chat.common import ChatRoomUserState, create_chat_room_reponse, create_error_message_resp, create_success_resp
 from datetime import datetime
 
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -90,25 +90,22 @@ class UserNameManager(APIView):
         serializer.is_valid(raise_exception=True)
         user_id = request.user.id
 
-        resp = {"error_message": ""}
         try:
             with transaction.atomic():
                 user = User.objects.get(pk=user_id)
                 if user.username != "":
-                    resp["error_message"] = "Username already set for user!"
-                    return Response(data=resp, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(data=create_error_message_resp("Username already set for user!"), status=status.HTTP_400_BAD_REQUEST)
 
                 username = serializer.get_user_name()
                 if len(User.objects.filter(username__exact=username)) > 0:
-                    resp["error_message"] = "Username already taken"
-                    return Response(data=resp, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(data=create_error_message_resp("Username already taken"), status=status.HTTP_400_BAD_REQUEST)
 
                 user.username = username
                 user.save()          
         except User.DoesNotExist:
-            return Response(data="Post does not exist", status=status.HTTP_400_BAD_REQUEST)
+            return Response(data=create_error_message_resp("Post does not exist"), status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(data=resp, status=status.HTTP_201_CREATED)
+        return Response(data=create_success_resp(), status=status.HTTP_201_CREATED)
 
     """
     Get username of given user.
@@ -190,19 +187,16 @@ class PostManager(APIView):
         serializer = PostIdSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         post_id = serializer.get_post_id()
-        resp = {"error_message": ""}
         try:
             with transaction.atomic():
                 post = Post.objects.get(pk=post_id)
                 if post.creator_user.id != request.user.id:
-                    resp["error_message"] = "User not authorized to delete post"
-                    return Response(data=resp, status=status.HTTP_401_UNAUTHORIZED)
+                    return Response(data=create_error_message_resp("User not authorized to delete post"), status=status.HTTP_401_UNAUTHORIZED)
                 post.delete()
         except Post.DoesNotExist:
-            resp["error_message"] = "Post does not exist"
-            return Response(data=resp, status=status.HTTP_400_BAD_REQUEST)
+            return Response(data=create_error_message_resp("Post does not exist"), status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(data=resp, status=status.HTTP_200_OK)
+        return Response(data=create_success_resp(), status=status.HTTP_200_OK)
 
 
 """
@@ -251,12 +245,12 @@ class ChatRoomsPerUserManager(APIView):
                 user_message_metadata.save()
 
         except User.DoesNotExist:
-            return Response(data="User not found", status=status.HTTP_400_BAD_REQUEST)
+            return Response(data=create_error_message_resp("User not found"), status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError as e:
             print(e)
-            return Response(data="Internal error", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data=create_error_message_resp("Internal error"), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(status=status.HTTP_201_CREATED)
+        return Response(data=create_success_resp(), status=status.HTTP_201_CREATED)
 
     """
     List Chats for given user. Only chat rooms where they are invited/joined and other user is not is returned.
@@ -548,13 +542,13 @@ class MarkChatAsRead(APIView):
                 chatroom_user.save()
 
         except User.DoesNotExist:
-            return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
+            return Response(data=create_error_message_resp("User does not exist"), status=status.HTTP_400_BAD_REQUEST)
         except ChatRoom.DoesNotExist:
-            return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
+            return Response(data=create_error_message_resp("Chat Room does not exist"), status=status.HTTP_400_BAD_REQUEST)
         except ChatRoomUser.DoesNotExist:
-            return Response(data="User is not a member of the room", status=status.HTTP_400_BAD_REQUEST)
+            return Response(data=create_error_message_resp("User is not a member of the room"), status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(data="success", status=status.HTTP_200_OK)
+        return Response(data=create_success_resp(), status=status.HTTP_200_OK)
 
 """
 Handle feedback provided by user.
