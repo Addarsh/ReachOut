@@ -34,6 +34,12 @@ class User(AbstractUser):
     # Timestamp when this user row was last updated.
     last_updated_time = models.DateTimeField(auto_now=True)
 
+    # One Time Password of the user for activating account/password reset flow.
+    otp = models.CharField(max_length=200, default='')
+
+    # Set to True if user's email is verified and False otherwise.
+    email_verified = models.BooleanField(default=False)
+
     USERNAME_FIELD: str = 'email'
     REQUIRED_FIELDS = ['username']
 

@@ -2,3 +2,4 @@
 chat/__pycache__/
 reachout/__pycache__/
 chat/migrations/__pycache__/
+reachout/.env

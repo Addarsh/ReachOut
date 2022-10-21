@@ -22,10 +22,12 @@ from chat.serializers import (
     UserSignUpSerializer, 
     PostIdSerializer,
     UsernameSerializer,
-    ChatRoomMessagePostSerializer
+    ChatRoomMessagePostSerializer,
+    OTPSerializer
 )
 from chat.models import ChatRoomUser, Post, ChatRoom, User, Message, UserMessageMetadata, Feedback
 from chat.common import ChatRoomUserState, create_chat_room_reponse, create_error_message_resp, create_success_resp
+from chat.email_auth_backend import verify_email
 from datetime import datetime
 
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -43,8 +45,13 @@ class SignUp(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            user = serializer.save()
-            token, created = Token.objects.get_or_create(user=user)
+            with transaction.atomic():
+                user = serializer.save()
+                token, created = Token.objects.get_or_create(user=user)
+
+                # Send verification email to user.
+                # TODO enable this only in prod env.
+                verify_email(user)
         except Exception as e:
             print(e)
             return Response(data=e.args, status=status.HTTP_400_BAD_REQUEST)
@@ -55,6 +62,36 @@ class SignUp(APIView):
             'email': user.email,
             'username': user.username,
             }, status=status.HTTP_201_CREATED)
+
+"""
+Activate user account using OTP. 
+"""
+
+class ActivateAccount(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = OTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user_id = request.user.id
+
+        try:
+            with transaction.atomic():
+                user = User.objects.get(pk=user_id)
+                if user.otp != serializer.get_otp():
+                    # Incorrect OTP, throw an error.
+                    return Response(data=create_error_message_resp("Incorrect Code"), status=status.HTTP_400_BAD_REQUEST)
+
+                # OTP confirmed.
+                user.email_verified = True
+                user.otp = ""
+                user.save()
+
+        except User.DoesNotExist:
+            return Response(data=create_error_message_resp("User does not exist"), status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data=create_success_resp(), status=status.HTTP_200_OK)
 
 
 """

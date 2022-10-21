@@ -181,3 +181,13 @@ class FeedbackSerializer(serializers.Serializer):
 
     def get_description(self):
         return self.validated_data["description"]
+
+"""
+Validate OTP.
+"""
+
+class OTPSerializer(serializers.Serializer):
+    otp = serializers.CharField(max_length=200, allow_blank=False)
+
+    def get_otp(self):
+        return self.validated_data["otp"]
