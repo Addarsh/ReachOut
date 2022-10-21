@@ -379,21 +379,42 @@ class AlreadyExistingChatRoom(APIView):
 
         user_id = request.user.id
 
-        chat_room_exists_result = {"exists": False}
+        chat_room_exists_result = {"exists": False, "room_id": "", "pending_invite_to_other_user": False, "pending_invite_to_me": False}
         
         try:
             with transaction.atomic():
                 User.objects.get(pk=user_id)
                 User.objects.get(pk=other_id)
 
-                # Ensure both users are joined members of the room.
-                user_room_id_list = [cru.chat_room.id for cru in ChatRoomUser.objects.filter(user_id__exact=user_id).filter(state__exact=ChatRoomUserState.JOINED.name)]
-                other_room_id_list = [cru.chat_room.id for cru in ChatRoomUser.objects.filter(user_id__exact=other_id).filter(state__exact=ChatRoomUserState.JOINED.name)]
+                # Check if there are any rooms where this user is joined but other user is invited.
+                user_room_id_joined_list = [cru.chat_room.id for cru in ChatRoomUser.objects.filter(user_id__exact=user_id).filter(state__exact=ChatRoomUserState.JOINED.name)]
+                other_room_id_invited_list = [cru.chat_room.id for cru in ChatRoomUser.objects.filter(user_id__exact=other_id).filter(state__exact=ChatRoomUserState.INVITED.name)]
 
-                # Check if Chat room exists.
-                int_set = set(user_room_id_list) & set(other_room_id_list)
-                chat_room_exists_result["exists"] = len(int_set) > 0
-                chat_room_exists_result["room_id"] = list(int_set)[0] if len(int_set) > 0 else ""
+                # Check if there are any pending invites user has sent to other user.
+                invite_int_set = set(user_room_id_joined_list) & set(other_room_id_invited_list)
+                pending_invite_to_other_user = len(invite_int_set) > 0
+                if pending_invite_to_other_user:
+                    # Pending chat invite exists.
+                    chat_room_exists_result["exists"] = True
+                    chat_room_exists_result["room_id"] = list(invite_int_set)[0]
+                    chat_room_exists_result["pending_invite_to_other_user"] = True
+                    return Response(data=chat_room_exists_result, status=status.HTTP_200_OK)
+
+                # Check if there are any pending invites other user has sent to me.
+                user_room_id_invited_list = [cru.chat_room.id for cru in ChatRoomUser.objects.filter(user_id__exact=user_id).filter(state__exact=ChatRoomUserState.INVITED.name)]
+                other_room_id_joined_list = [cru.chat_room.id for cru in ChatRoomUser.objects.filter(user_id__exact=other_id).filter(state__exact=ChatRoomUserState.JOINED.name)]
+                invite_int_set = set(user_room_id_invited_list) & set(other_room_id_joined_list)
+                pending_invite_to_me = len(invite_int_set) > 0
+                if pending_invite_to_me:
+                    chat_room_exists_result["exists"] = True
+                    chat_room_exists_result["room_id"] = list(invite_int_set)[0]
+                    chat_room_exists_result["pending_invite_to_me"] = True
+                    return Response(data=chat_room_exists_result, status=status.HTTP_200_OK)
+
+                # Check if both users are joined in chat room.
+                joined_int_set = set(user_room_id_joined_list) & set(other_room_id_joined_list)
+                chat_room_exists_result["exists"] = len(joined_int_set) > 0
+                chat_room_exists_result["room_id"] = list(joined_int_set)[0] if len(joined_int_set) > 0 else ""
 
         except ChatRoom.DoesNotExist:
             return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
