@@ -17,5 +17,6 @@ urlpatterns = [
     path('signup/', service.SignUp.as_view()),
     path('activate/', service.ActivateAccount.as_view()),
     path('username/', service.UserNameManager.as_view()),
-    path('feedback/', service.FeedbackManager.as_view())
+    path('feedback/', service.FeedbackManager.as_view()),
+    path('delete-account/', service.AccountDeletionManager.as_view())
 ]

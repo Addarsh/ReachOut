@@ -559,7 +559,7 @@ class ManageChatInviteRequest(APIView):
 
                 chat_room_user  = ChatRoomUser.objects.filter(chat_room__id__exact=room_id).get(user_id__exact=user_id)
                 if chat_room_user.state != ChatRoomUserState.INVITED.name:
-                    return Response(data="User is not currently invited to the room", status=status.HTTP_400_BAD_REQUEST)
+                    return Response(data=create_error_message_resp("User is not currently invited to the room"), status=status.HTTP_400_BAD_REQUEST)
 
                 chat_room_user.state = result_state.name
                 if result_state == ChatRoomUserState.JOINED:
@@ -568,11 +568,11 @@ class ManageChatInviteRequest(APIView):
                 chat_room_user.save()
 
         except User.DoesNotExist:
-            return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
+            return Response(data=create_error_message_resp("User does not exist"), status=status.HTTP_400_BAD_REQUEST)
         except ChatRoom.DoesNotExist:
-            return Response(data="Chat Room does not exist", status=status.HTTP_400_BAD_REQUEST)
+            return Response(data=create_error_message_resp("Chat Room does not exist"), status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(data="success", status=status.HTTP_200_OK)
+        return Response(data=create_success_resp(), status=status.HTTP_200_OK)
 
 """
 Mark Chat Room as read for given user.
@@ -630,3 +630,31 @@ class FeedbackManager(APIView):
             return Response(data="User does not exist", status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data="success", status=status.HTTP_200_OK)
+
+"""
+Handle User account deletion.
+"""
+
+class AccountDeletionManager(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_id = request.user.id
+
+        try:
+            with transaction.atomic():
+                user = User.objects.get(pk=user_id)
+                
+                # Find all chats rooms the user is a part of and delete them.
+                chat_room_ids = [cru.chat_room.id for cru in ChatRoomUser.objects.filter(user_id__exact=user_id)]
+                if len(chat_room_ids) > 0:
+                    print("deleting ", chat_room_ids, " chat rooms")
+                    ChatRoom.objects.filter(id__in=chat_room_ids).delete()
+
+                # Delete user.
+                user.delete()
+        except User.DoesNotExist:
+            return Response(data=create_error_message_resp("User does not exist"), status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data=create_success_resp(), status=status.HTTP_200_OK)
